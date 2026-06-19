@@ -27,7 +27,7 @@ Characteristics:
 * Example: `#file:path/to/file.md` pulls in the full file contents at that location.
 * Input variables are supported; see the Input Variables section for syntax.
 
-*Naming*: Use lowercase kebab-case matching the prompt's purpose (for example, `prompt-refactor.prompt.md`, `git-commit-message.prompt.md`).
+*Naming*: Use lowercase kebab-case matching the prompt's purpose (for example, `checkpoint.prompt.md`, `git-commit-message.prompt.md`).
 
 Consider adding sequential steps when the prompt involves multiple distinct actions that benefit from ordered execution. Simple prompts that accomplish a single task do not need protocol structure.
 

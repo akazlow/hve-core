@@ -1,54 +1,64 @@
 ---
 name: prompt-builder
 description: 'Orchestrate prompt engineering research, validation, and updates through the prompt-builder phase loop.'
+argument-hint: "[promptFiles=...] [files=...] [requirements=...]"
 license: MIT
 user-invocable: true
 ---
 
 # Prompt Builder Skill
 
-Use [references/orchestration.md](references/orchestration.md) as the single authoritative contract for the phase loop, sandbox contract, subagent dispatch matrix, artifact paths, and cleanup contract.
+Umbrella entry point for prompt-engineering work. Route each request to the matching specialized skill, which owns its execution. [references/orchestration.md](references/orchestration.md) is the canonical reference for the phase loop, sandbox contract, subagent dispatch matrix, artifact paths, and cleanup contract; each specialized skill mirrors it in its own self-contained references.
 
 Follow the shared conventions in `copilot-tracking.instructions.md`.
 
 ## Goal
 
-Create, improve, refactor, analyze, and apply fixes to prompt engineering artifacts by orchestrating the named subagents through the phase loop until the evaluation log shows no remaining issues.
+Understand the request, route it to the matching specialized skill, and maintain the canonical orchestration reference in [references/orchestration.md](references/orchestration.md). The routed skill runs the phase loop and owns its sandbox lifecycle, cleanup, and final response, following its own self-contained references.
 
-## Delegation rules
+## Flow
 
-* Select the named subagent directly and provide the inputs listed for its phase.
-* Avoid reading prompt file(s) directly; have the subagents read them.
-* Repeat each subagent dispatch, answering any clarifying questions it returns, until that step completes.
-* Use the orchestration reference for the full phase loop, sandbox contract, dispatch matrix, artifact paths, and cleanup contract.
+1. Identify the target prompt artifacts and the kind of work requested.
+2. Route to the matching specialized skill using the delegation crosswalk.
+3. Hand off to that skill, which executes the phase loop in a sandbox per the shared contract and returns its own final response.
 
-## Three-phase summary
+## Delegation crosswalk
 
-1. Execution and evaluation: run the tester and evaluator pair in the chosen sandbox, inspect the evaluation log, and repeat until that step completes.
-2. Research: create or update the primary research artifact, run `Researcher Subagent` in parallel when topics are independent, and finalize the research before Phase 3.
-3. Modifications: run `Prompt Updater` in parallel when prompt files are independent, review updater tracking, and return to Phase 1.
+| Request                                                                   | Routed skill       |
+|---------------------------------------------------------------------------|--------------------|
+| Create or update a prompt artifact                                        | `/prompt-build`    |
+| Apply fixes from a prior analysis                                         | `/prompt-build`    |
+| Refactor, simplify, or clean up an existing artifact against requirements | `/prompt-refactor` |
+| Read-only analysis or quality report with no changes                      | `/prompt-analyze`  |
 
-## Sandbox and naming
+When a "clean up" request is ambiguous, route substantial create-or-change work to `/prompt-build` and scoped simplification of an existing artifact to `/prompt-refactor`. The read-only `/prompt-analyze` route runs the execution and evaluation phase only.
 
-* Derive `{{topic}}` from the name of the primary target artifact, the skill or prompt folder name, or the file base name without suffixes, in kebab-case.
-* Use `.copilot-tracking/sandbox/{{YYYY-MM-DD}}-{{topic}}-*` to discover the next run number and name the next sandbox `{{YYYY-MM-DD}}-{{topic}}-{{run-number}}`.
-* Keep all sandbox edits inside the assigned sandbox folder and reuse prior runs for continuity across iterations.
+## Inputs
 
-## Cleanup gate
+* `promptFiles=...`: the prompt, instruction, agent, or skill artifacts to analyze, create, update, or refactor; infer from the current open or attached files when not provided.
+* `files=...`: reference artifacts the target prompt should be able to produce, used by create or update work.
+* `requirements=...`: explicit objectives or constraints, used mainly by refactor work.
+* When no explicit input is given, infer the intent and targets from the conversation, attached files, or the current file.
 
-* Clean up all sandbox files and folders created for this request before the final response, unless the user asked to keep the sandbox artifacts.
-* Do not return the final response until the cleanup pass is complete.
+## Success criteria
 
-## User communication contract
+* The request is routed to the matching specialized skill: `/prompt-analyze`, `/prompt-build`, or `/prompt-refactor`.
+* The routed skill completes its phase loop with the evaluation log showing no unresolved issues, or with remaining issues documented explicitly.
+* The canonical reference in [references/orchestration.md](references/orchestration.md), mirrored by each routed skill's own references, defines the phase loop, sandbox naming, dispatch matrix, artifact paths, and cleanup.
 
-* Use well-formatted markdown.
-* Put the most important detail or question last.
-* Announce each phase before starting work.
-* Summarize outcomes when a phase completes and explain how the next phase will proceed.
-* Surface decisions and questions when progression is unclear.
+## Constraints
 
-## Final response contract
+* Keep the umbrella as the routing and shared-contract layer; do not run the phase loop or duplicate a granular skill's execution detail.
+* Route each request to one specialized skill and let that skill own its sandbox lifecycle, cleanup, and final response.
+* Keep [references/orchestration.md](references/orchestration.md) as the canonical reference that each routed skill mirrors in its own self-contained references.
 
-After cleanup, return a concise summary that includes the current phase status and iteration count, the key artifacts touched, any outstanding issues or blockers, the evaluation outcome, the key decisions or questions surfaced during the run, and the next recommended step if more work is needed.
+## Stop rules
+
+* Stop and ask when the request is too vague to route.
+* Stop when the routed skill reports a blocking issue that needs user input.
+
+## Handoff
+
+Hand off to the routed skill, which returns the final response per its own contract: status and iteration count, the key artifacts touched, the evaluation outcome, decisions or questions surfaced, and the next recommended step. For a read-only review recommend `/prompt-analyze`; for create or update work recommend `/prompt-build`; for cleanup against requirements recommend `/prompt-refactor`.
 
 > Brought to you by microsoft/hve-core
