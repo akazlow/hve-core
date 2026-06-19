@@ -8,13 +8,13 @@ user-invocable: true
 
 # Prompt Builder Skill
 
-Umbrella entry point for prompt-engineering work. Route each request to the matching specialized skill, which owns its execution. [references/orchestration.md](references/orchestration.md) is the canonical reference for the phase loop, sandbox contract, subagent dispatch matrix, artifact paths, and cleanup contract; each specialized skill mirrors it in its own self-contained references.
+Umbrella entry point for prompt-engineering work. Route each request to the matching specialized skill, which owns its execution. [references/orchestration.md](references/orchestration.md) is the canonical reference for the phase loop, sandbox contract, subagent dispatch matrix, artifact paths, and cleanup contract; each specialized skill references it, mirroring only the parts it needs in its own references.
 
-Follow the shared conventions in `copilot-tracking.instructions.md`.
+Follow the shared `.copilot-tracking` conventions.
 
 ## Goal
 
-Understand the request, route it to the matching specialized skill, and maintain the canonical orchestration reference in [references/orchestration.md](references/orchestration.md). The routed skill runs the phase loop and owns its sandbox lifecycle, cleanup, and final response, following its own self-contained references.
+Understand the request, route it to the matching specialized skill, and maintain the canonical orchestration reference in [references/orchestration.md](references/orchestration.md). The routed skill runs the phase loop and owns its sandbox lifecycle, cleanup, and final response, following the canonical reference and its own references.
 
 ## Flow
 
@@ -44,13 +44,13 @@ When a "clean up" request is ambiguous, route substantial create-or-change work 
 
 * The request is routed to the matching specialized skill: `/prompt-analyze`, `/prompt-build`, or `/prompt-refactor`.
 * The routed skill completes its phase loop with the evaluation log showing no unresolved issues, or with remaining issues documented explicitly.
-* The canonical reference in [references/orchestration.md](references/orchestration.md), mirrored by each routed skill's own references, defines the phase loop, sandbox naming, dispatch matrix, artifact paths, and cleanup.
+* The canonical reference in [references/orchestration.md](references/orchestration.md), referenced or mirrored by each routed skill's own references, defines the phase loop, sandbox naming, dispatch matrix, artifact paths, and cleanup.
 
 ## Constraints
 
 * Keep the umbrella as the routing and shared-contract layer; do not run the phase loop or duplicate a granular skill's execution detail.
 * Route each request to one specialized skill and let that skill own its sandbox lifecycle, cleanup, and final response.
-* Keep [references/orchestration.md](references/orchestration.md) as the canonical reference that each routed skill mirrors in its own self-contained references.
+* Keep [references/orchestration.md](references/orchestration.md) as the canonical reference that each routed skill references or mirrors in its own references.
 
 ## Stop rules
 

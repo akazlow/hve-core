@@ -8,15 +8,17 @@ user-invocable: true
 
 # Prompt Analyze Skill
 
+This skill runs only the execution-and-evaluation phase (Phase 1) of the `prompt-builder` skill. Use the `prompt-builder` skill's orchestration reference for the sandbox contract, the `Prompt Tester` and `Prompt Evaluator` dispatch matrix, and the cleanup contract. This skill adds only the analyze-only scope and the Analysis Report structure in [references/analysis-report-template.md](references/analysis-report-template.md).
+
 ## Goal
 
-Execute only Phase 1 of the prompt-builder workflow for existing prompt artifacts: run the target prompts in a sandbox, evaluate them against the Prompt Quality Criteria, and produce an Analysis Report. This skill is read-only and never modifies the analyzed artifacts or any file outside the sandbox.
+Execute only Phase 1 of the `prompt-builder` skill for existing prompt artifacts: run the target prompts in a sandbox, evaluate them against the Prompt Quality Criteria, and produce an Analysis Report. This skill is read-only and never modifies the analyzed artifacts or any file outside the sandbox.
 
 ## Flow
 
-1. Confirm the target prompt file(s) and derive the sandbox context by using the deterministic contract in [references/analysis-report-template.md](references/analysis-report-template.md). Use the primary target artifact as the source for `{{topic}}`: if the target is a `SKILL.md`, use the parent folder name; otherwise use the artifact's base name with the suffix stripped (`.prompt.md`, `.instructions.md`, `.agent.md`) and convert it to kebab-case. If multiple `promptFiles` are supplied, use the lexically first entry as the primary artifact. Discover the next run number under `.copilot-tracking/sandbox/{{YYYY-MM-DD}}-{{topic}}-*` and name the sandbox `.copilot-tracking/sandbox/{{YYYY-MM-DD}}-{{topic}}-{{run-number}}`.
-2. Dispatch `Prompt Tester` to execute the target prompt file(s) literally inside the sandbox and write an execution log. Provide the target prompt path(s), run number, sandbox path, the analysis purpose/requirements/expectations, and any prior run paths. When the only input is `promptFiles`, default the analysis purpose/requirements/expectations to "evaluate the target artifact(s) against the Prompt Quality Criteria."
-3. Dispatch `Prompt Evaluator` to review the execution log and the target files against the Prompt Quality Criteria and write an evaluation log. Provide the target file path(s), run number, sandbox path, the execution-log path, and any prior evaluation logs.
+1. Confirm the target prompt file(s) and derive the sandbox folder from the `prompt-builder` skill's sandbox contract in its orchestration reference.
+2. Dispatch `Prompt Tester` to execute the target prompt file(s) literally inside the sandbox and write an execution log, following the dispatch matrix in the `prompt-builder` skill's orchestration reference. When the only input is `promptFiles`, default the analysis purpose/requirements/expectations to "evaluate the target artifact(s) against the Prompt Quality Criteria."
+3. Dispatch `Prompt Evaluator` to review the execution log and the target files against the Prompt Quality Criteria and write an evaluation log, following the same dispatch matrix.
 4. Read the evaluation log and synthesize the Analysis Report from the evaluator findings using [references/analysis-report-template.md](references/analysis-report-template.md). Present the Analysis Report inline as the final response. Stop after this phase and do not continue into research, build, or modification behavior.
 
 ## Inputs
@@ -41,7 +43,7 @@ Execute only Phase 1 of the prompt-builder workflow for existing prompt artifact
 * Hard stop if the target files or sandbox context cannot be determined.
 * Stop if the Analysis Report cannot be produced.
 * Stop after the evaluation phase completes; do not continue to later prompt-builder phases.
-* Clean up the sandbox files and folders created for this request before the final response unless the user asked to keep them.
+* Apply the `prompt-builder` skill's cleanup contract from its orchestration reference before the final response.
 
 ## Handoff
 

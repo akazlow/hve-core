@@ -4,54 +4,11 @@ description: "Analysis report structure and analyze-only contract for the prompt
 
 # Analysis Report Template
 
-Use this structure to synthesize the evaluator findings into a concise report and to keep the shared analyze-only contract deterministic.
+Use this structure to synthesize the evaluator findings into a concise report. The shared execution contract is centralized in the `prompt-builder` skill; this reference adds only the analyze-only scope and the report structure.
 
-## Deterministic sandbox contract
+## Sandbox and dispatch contract
 
-* Use today's date as `{{YYYY-MM-DD}}`.
-* If multiple `promptFiles` are supplied, use the lexically first entry as the primary artifact.
-* Derive `{{topic}}` from the primary target artifact as follows: if the target is `SKILL.md`, use the parent folder name; otherwise use the artifact's base name with the suffix stripped (`.prompt.md`, `.instructions.md`, `.agent.md`) and convert it to kebab-case.
-* Discover the next run number under `.copilot-tracking/sandbox/{{YYYY-MM-DD}}-{{topic}}-*` and name the sandbox `.copilot-tracking/sandbox/{{YYYY-MM-DD}}-{{topic}}-{{run-number}}`.
-* Write the execution log and evaluation log inside that sandbox folder, and present the Analysis Report inline as the final response. The analysis must remain read-only with respect to the analyzed artifacts and any file outside the sandbox.
-
-## Prompt Tester and Prompt Evaluator dispatch contract
-
-### Prompt Tester
-
-Inputs:
-
-* target prompt path(s)
-* run number
-* sandbox path
-* purpose/requirements/expectations
-* optional prior run paths
-
-Outputs:
-
-* sandbox path
-* execution-log path
-* status
-* literal findings
-* questions
-
-### Prompt Evaluator
-
-Inputs:
-
-* target file path(s)
-* run number
-* sandbox path
-* execution-log path
-* optional prior evaluation-log paths
-
-Outputs:
-
-* evaluation-log path
-* status
-* severity-graded checklist
-* questions
-
-This skill does not dispatch `Researcher Subagent` or `Prompt Updater`.
+Derive the sandbox folder and dispatch `Prompt Tester` and `Prompt Evaluator` using the `prompt-builder` skill's sandbox contract and subagent dispatch matrix in its orchestration reference. Write the execution log and evaluation log inside that sandbox folder, and present the Analysis Report inline as the final response. The analysis stays read-only with respect to the analyzed artifacts and any file outside the sandbox, and this skill dispatches only `Prompt Tester` and `Prompt Evaluator`, never `Researcher Subagent` or `Prompt Updater`.
 
 ## Analysis Report Template
 

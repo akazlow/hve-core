@@ -23,7 +23,7 @@ Characteristics:
 * Frontmatter includes `agent:` to delegate to a custom agent using the human-readable name from the agent's `name:` frontmatter (for example, `agent: Prompt Builder`). Quote the value when the agent name contains spaces.
 * Activation lines are optional and apply only to prompt files; agent files and instructions files do not include them. Include a `---` followed by an activation instruction when the workflow start point is not obvious, such as prompts using a generic agent, prompts without an `agent:` field, or prompts where the protocol entry point needs clarification. Omit the activation line when delegating to a custom agent whose phases or steps already define the workflow.
 * Use `#file:` only when the prompt must pull in the full contents of another file.
-* When the full contents are not required, refer to the file by path or to the relevant section.
+* When the full contents are not required, refer to the file by name or to the relevant section, following Referencing Other Artifacts when the target is another skill, subagent, prompt, or instruction.
 * Example: `#file:path/to/file.md` pulls in the full file contents at that location.
 * Input variables are supported; see the Input Variables section for syntax.
 
@@ -726,6 +726,15 @@ The following patterns provide limited value as prompt instructions:
 * Forcing prompt instruction lists to have three or more items when fewer suffice.
 * Avoid using XML tags to organize prompt instruction content. XML comments used by codebase tooling for section extraction are unrelated to this prohibition.
 
+### Referencing Other Artifacts
+
+When prompt instructions refer to another skill, subagent, prompt, or instruction, name the artifact instead of hard-coding a file path or filename:
+
+* Refer to the artifact by the `name:` value from its frontmatter, wrapped in backticks so the reader can pick it out (for example, run `Prompt Tester`, route to the `prompt-build` skill, or apply the `writing-style` instructions).
+* Instruction files have no `name:` field, so refer to them by a stable, backticked topic label, naming the specific section when only part applies (for example, the Prompt Quality Criteria section in the `prompt-builder` instructions).
+* For skills, also follow Skill Invocation from Callers: describe the task intent or use the `/skill-name` slash command rather than a path into the skill.
+* Reserve file paths for a skill's own bundled resources relative to its skill root, for artifact output locations such as `.copilot-tracking/` files, and for frontmatter wiring (`agents:`, `agent:`, `applyTo`) or tool-level references that require an identifier. Do not wrap those file paths in backticks.
+
 ## Prompt Design Principles
 
 Successful prompts demonstrate these qualities:
@@ -744,8 +753,8 @@ Prompt instructions for subagents keep the subagent focused on specific tasks.
 Tool invocation:
 
 * Run the named agent with `runSubagent` or `task` tools. Provide the inputs needed for the task directly to the named agent; do not add extra instructions telling `runSubagent` to read the corresponding `.github/agents/` file.
-* When describing which agent to invoke in body text, use the human-readable name from the agent's `name:` frontmatter (for example, "Run `Prompt Tester`" or "Run `Researcher Subagent`"). Reserve filename-style identifiers for file paths, glob examples, and tool-level references.
-* Reference subagent files using glob paths like `.github/agents/**/codebase-researcher.agent.md` so resolution works regardless of whether the subagent is at the root or in the `subagents/` folder.
+* When describing which agent to invoke in body text, use the human-readable name from the agent's `name:` frontmatter wrapped in backticks (for example, run `Prompt Tester` or `Researcher Subagent`), following Referencing Other Artifacts.
+* Declare subagent dependencies in the `agents:` frontmatter by `name:` value; the name resolves whether the subagent sits at the agents root or in a `subagents/` folder, so a file path is not needed.
 * Subagents do not run their own subagents (see the Subagents section).
 
 Task specification:
@@ -803,6 +812,7 @@ Every item applies to the entire file. Validation fails if any item is not satis
 * [ ] Frontmatter includes required fields and follows Frontmatter Requirements.
 * [ ] Protocols follow Protocol Patterns when step-based or phase-based structure is used.
 * [ ] Instructions match the Prompt Writing Style.
+* [ ] References to other skills, subagents, prompts, and instructions follow Referencing Other Artifacts, naming each artifact in backticks instead of hard-coding its file path.
 * [ ] Instructions follow all Prompt Design Principles.
 * [ ] Subagent prompts follow Subagent Prompt Criteria when running subagents.
 * [ ] External sources follow External Source Integration when referencing SDKs or APIs.

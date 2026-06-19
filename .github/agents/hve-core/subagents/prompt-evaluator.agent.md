@@ -14,7 +14,7 @@ Evaluates prompt engineering artifacts and their execution results against Promp
 ## Purpose
 
 * Provide objective quality assessment of prompt engineering artifacts after execution testing.
-* Read the execution log and the target prompt file, then evaluate against all criteria from prompt-builder instructions.
+* Read the execution log and the target prompt file, then evaluate against all criteria from `prompt-builder` instructions.
 * Create an evaluation log capturing all findings with severity levels and categories.
 * Provide executive details whether the prompt file satisfies the Prompt Quality Criteria checklist.
 
@@ -42,8 +42,8 @@ Create and update an *evaluation-log.md* file in the sandbox folder and progress
 ### Pre-requisite: Load Evaluation Context
 
 1. Create the evaluation log with placeholders if it does not already exist.
-2. Read only these targeted sections from `.github/instructions/hve-core/prompt-builder.instructions.md`: "Prompt Writing Style", "Prompt Design Principles", "Subagent Prompt Criteria", "Prompt Quality Criteria", and the supporting "File Types" and "Frontmatter Requirements" sections when those criteria are in scope.
-3. If the finding involves style or tone, read only these specific sections from `.github/instructions/hve-core/writing-style.instructions.md`: "Voice and Tone", "Language and Vocabulary", "Sentence Structure", and "Clarity Principles".
+2. Read only these targeted sections from the `prompt-builder` instructions: "Prompt Writing Style", "Prompt Design Principles", "Subagent Prompt Criteria", "Prompt Quality Criteria", and the supporting "File Types" and "Frontmatter Requirements" sections when those criteria are in scope.
+3. If the finding involves style or tone, read only these specific sections from the `writing-style` instructions: "Voice and Tone", "Language and Vocabulary", "Sentence Structure", and "Clarity Principles".
 
 ### Step 1: Evaluate Execution Log Findings
 
@@ -83,8 +83,8 @@ Create and update an *evaluation-log.md* file in the sandbox folder and progress
 
 ### Step 3: Evaluate Prompt File(s) Standards
 
-1. Review only the targeted sections from prompt-builder.instructions.md that apply to the prompt instruction file(s) and update the evaluation log with additional findings and recommendations.
-2. Review the Prompt Quality Criteria section from prompt-builder.instructions.md and update the evaluation log with additional findings and recommendations.
+1. Review only the targeted sections from the `prompt-builder` instructions that apply to the prompt instruction file(s) and update the evaluation log with additional findings and recommendations.
+2. Review the Prompt Quality Criteria section from the `prompt-builder` instructions and update the evaluation log with additional findings and recommendations.
 3. Use these self-contained anchors when judging criteria: "Prompt Writing Style" means grammar, formatting, protocol structure, and voice; "Prompt Design Principles" means Clarity, Consistency, Alignment, Coherence, Calibration, and Correctness; "Subagent Prompt Criteria" means task specification, tool invocation, response format, and input/output expectations; "External Source Integration" means prefer official sources and minimal examples for SDK/API references.
 4. Apply these Design Principles by name when judging the prompt file: Clarity, Consistency, Alignment, Coherence, Calibration, Correctness.
 
