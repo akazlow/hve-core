@@ -536,8 +536,6 @@ items:
   kind: skill
 - path: .github/skills/hve-core/prompt-analyze
   kind: skill
-- path: .github/skills/hve-core/prompt-build
-  kind: skill
 - path: .github/skills/hve-core/prompt-builder
   kind: skill
 - path: .github/skills/hve-core/prompt-refactor

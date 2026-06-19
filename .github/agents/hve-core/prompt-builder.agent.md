@@ -10,7 +10,7 @@ agents:
 handoffs:
   - label: "💡 Update/Create"
     agent: Prompt Builder
-    prompt: "/prompt-build"
+    prompt: "/prompt-builder"
     send: false
   - label: "🛠️ Refactor"
     agent: Prompt Builder
@@ -22,7 +22,7 @@ handoffs:
     send: true
   - label: "🔧 Apply Fixes"
     agent: Prompt Builder
-    prompt: "/prompt-build make updates based on findings in this conversation"
+    prompt: "/prompt-builder make updates based on findings in this conversation"
     send: true
   - label: "♻️ Cleanup Sandbox"
     agent: Prompt Builder

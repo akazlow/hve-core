@@ -50,7 +50,7 @@ Refactor existing prompt-engineering artifacts by simplifying, consolidating, an
 
 ## Handoff
 
-If the request needs a deeper read-only review, recommend `/prompt-analyze`. For broader create or update work, recommend `/prompt-build`.
+If the request needs a deeper read-only review, recommend `/prompt-analyze`. For broader create or update work, recommend `/prompt-builder`.
 
 ## Final response contract
 

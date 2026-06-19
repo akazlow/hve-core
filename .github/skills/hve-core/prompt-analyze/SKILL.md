@@ -47,7 +47,7 @@ Execute only Phase 1 of the `prompt-builder` skill for existing prompt artifacts
 
 ## Handoff
 
-If follow-up changes are needed, recommend `/prompt-build` or `/prompt-refactor` briefly, referencing the issues identified in the Analysis Report.
+If follow-up changes are needed, recommend `/prompt-builder` or `/prompt-refactor` briefly, referencing the issues identified in the Analysis Report.
 
 ## Final response contract
 

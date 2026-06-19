@@ -458,7 +458,7 @@ agents:
 handoffs:
   - label: "💡 Update/Create"
     agent: Prompt Builder
-    prompt: "/prompt-build "
+    prompt: "/prompt-builder "
     send: false
 ---
 ```
@@ -730,7 +730,7 @@ The following patterns provide limited value as prompt instructions:
 
 When prompt instructions refer to another skill, subagent, prompt, or instruction, name the artifact instead of hard-coding a file path or filename:
 
-* Refer to the artifact by the `name:` value from its frontmatter, wrapped in backticks so the reader can pick it out (for example, run `Prompt Tester`, route to the `prompt-build` skill, or apply the `writing-style` instructions).
+* Refer to the artifact by the `name:` value from its frontmatter, wrapped in backticks so the reader can pick it out (for example, run `Prompt Tester`, route to the `prompt-builder` skill, or apply the `writing-style` instructions).
 * Instruction files have no `name:` field, so refer to them by a stable, backticked topic label, naming the specific section when only part applies (for example, the Prompt Quality Criteria section in the `prompt-builder` instructions).
 * For skills, also follow Skill Invocation from Callers: describe the task intent or use the `/skill-name` slash command rather than a path into the skill.
 * Reserve file paths for a skill's own bundled resources relative to its skill root, for artifact output locations such as `.copilot-tracking/` files, and for frontmatter wiring (`agents:`, `agent:`, `applyTo`) or tool-level references that require an identifier. Do not wrap those file paths in backticks.
