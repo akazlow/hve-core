@@ -3,7 +3,7 @@ title: Security Assurance Case and Security Model
 description: Comprehensive security model and security assurance documentation demonstrating enterprise security practices
 sidebar_position: 2
 author: Microsoft
-ms.date: 2026-07-03
+ms.date: 2026-08-06
 ms.topic: reference
 keywords:
   - security
@@ -27,17 +27,17 @@ HVE Core is an enterprise prompt engineering framework for GitHub Copilot consis
 Most of the repository contains no runtime services, databases, or user data storage and is targeted primarily by supply chain and developer workflow threats.
 The Mural skill is the exception: it executes locally, holds OAuth tokens in the OS keyring (or an encrypted file fallback), and makes authenticated requests to a third-party SaaS.
 Threats specific to that runtime are analyzed in the [OAuth Authentication Threats](#oauth-authentication-threats) and [MCP Server Trust Analysis](#mcp-server-trust-analysis) sections.
-Security relies on defense-in-depth with 20+ automated controls validated through CI/CD pipelines.
+Security relies on defense-in-depth with 21+ automated controls validated through CI/CD pipelines.
 
 ### Security Posture Overview
 
 | Category                 | Status  | Control Count | Automated |
 |--------------------------|---------|---------------|-----------|
 | Supply Chain Security    | Strong  | 8 controls    | 100%      |
-| Code Quality             | Strong  | 5 controls    | 100%      |
+| Code Quality             | Strong  | 6 controls    | 100%      |
 | Access Control           | Strong  | 4 controls    | 100%      |
 | Vulnerability Management | Strong  | 3 controls    | 100%      |
-| Total                    | **20+** | **20**        | **100%**  |
+| Total                    | **21+** | **21**        | **100%**  |
 
 ## Contents
 
@@ -238,6 +238,19 @@ This section documents threats using [STRIDE](https://learn.microsoft.com/azure/
 | **Residual Risk** | Medium (semantic analysis not automated)                      |
 | **Status**        | Partially Mitigated                                           |
 
+#### T-3: Script Injection via Workflow Inputs
+
+| Field             | Value                                                                                                                                                                       |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Category**      | Tampering / Elevation of Privilege                                                                                                                                          |
+| **Asset**         | GitHub Actions `run:` steps                                                                                                                                                 |
+| **Threat**        | A caller-controlled `workflow_call` input interpolated directly into a shell command can alter command structure and execute unintended instructions on the workflow runner |
+| **Likelihood**    | Low (requires a caller able to invoke the reusable workflow with crafted input)                                                                                             |
+| **Impact**        | Medium (command execution is limited by the runner and job permissions but can affect build integrity)                                                                      |
+| **Mitigations**   | Route user-controlled expressions through step-level `env:` variables and reference native shell variables inside `run:` blocks; CodeQL `actions/code-injection` scanning   |
+| **Residual Risk** | Low to Medium while any legacy inline input interpolation remains                                                                                                           |
+| **Status**        | Partially Mitigated                                                                                                                                                         |
+
 #### R-1: Untraceable Configuration Changes
 
 | Field             | Value                                                      |
@@ -338,7 +351,7 @@ Affected workflow jobs:
 
 Defense-in-depth controls:
 
-* All workflows declare job-level permissions, not workflow-level
+* Workflows declare a top-level `permissions:` block, and every job under a populated block declares its own permissions rather than inheriting implicitly; `Test-WorkflowPermissions.ps1` enforces both
 * `persist-credentials: false` set on all checkout steps
 * Inline YAML comments document each `security-events: write` declaration
 * SARIF upload is the only write operation performed under this permission
@@ -1393,21 +1406,21 @@ Its headline residual is speaker-notes content egress to the Azure region; input
 
 ### Supply Chain Security Controls
 
-| ID   | Control                                  | Implementation                                                            | Validates Against |
-|------|------------------------------------------|---------------------------------------------------------------------------|-------------------|
-| SC-1 | Dependency Pinning Validation            | Test-DependencyPinning.ps1                                                | S-1, S-2          |
-| SC-2 | SHA Staleness Monitoring                 | Test-SHAStaleness.ps1                                                     | S-1               |
-| SC-3 | Dependency Review                        | dependency-review.yml                                                     | S-2, AI-5         |
-| SC-4 | npm Security Audit                       | npm audit in pr-validation.yml                                            | S-2               |
-| SC-5 | Dependabot Updates                       | dependabot.yml                                                            | S-1, S-2          |
-| SC-6 | Tool Checksum Verification               | scripts/security/tool-checksums.json                                      | S-1               |
-| SC-7 | SBOM Generation and Attestation          | anchore/sbom-action, actions/attest in main.yml                           | S-1, S-2          |
-| SC-8 | SBOM Dependency Diff                     | sbom-diff job in main.yml                                                 | S-1, S-2          |
-| SC-9 | VEX Vulnerability Triage and Attestation | vex-detect.yml, vex-draft.md, attest-and-upload-vex in release-stable.yml | S-1, S-2          |
+| ID   | Control                                  | Implementation                                                     | Validates Against |
+|------|------------------------------------------|--------------------------------------------------------------------|-------------------|
+| SC-1 | Dependency Pinning Validation            | Test-DependencyPinning.ps1                                         | S-1, S-2          |
+| SC-2 | SHA Staleness Monitoring                 | Test-SHAStaleness.ps1                                              | S-1               |
+| SC-3 | Dependency Review                        | dependency-review.yml                                              | S-2, AI-5         |
+| SC-4 | npm Security Audit                       | npm audit in pr-validation.yml                                     | S-2               |
+| SC-5 | Dependabot Updates                       | dependabot.yml                                                     | S-1, S-2          |
+| SC-6 | Tool Checksum Verification               | scripts/security/tool-checksums.json                               | S-1               |
+| SC-7 | SBOM Generation and Attestation          | anchore/sbom-action, actions/attest in release-stable.yml          | S-1, S-2          |
+| SC-8 | SBOM Dependency Diff                     | sbom-diff job in release-stable.yml                                | S-1, S-2          |
+| SC-9 | VEX Vulnerability Triage and Attestation | vex-detect.yml, vex-draft.md, vex-attest job in release-stable.yml | S-1, S-2          |
 
 #### SC-8: SBOM Dependency Diff Implementation
 
-The `sbom-diff` job in `main.yml` runs during each release to surface supply chain changes between consecutive versions. It compares the current dependency SBOM against the previous release, generating a structured `dependency-diff.md` report that is uploaded to the GitHub Release.
+The `sbom-diff` job in `release-stable.yml` runs during each release to surface supply chain changes between consecutive versions. It compares the current dependency SBOM against the previous release, generating a structured `dependency-diff.md` report that is uploaded to the GitHub Release.
 
 | Field            | Value                                                                      |
 |------------------|----------------------------------------------------------------------------|
@@ -1425,15 +1438,51 @@ The diff script parses SPDX JSON packages, excludes root document entries, and c
 
 When no previous release exists or the prior release lacks a dependency SBOM, the job exits cleanly without producing a diff. This graceful degradation ensures the first release in a repository proceeds without error.
 
+#### SC-9: VEX Vulnerability Triage and Attestation Implementation
+
+SC-9 spans three workflows: detection finds untriaged vulnerabilities, drafting proposes OpenVEX status updates for human review, and the release pipeline attests the resulting document. The canonical VEX document is `security/vex/hve-core.openvex.json`.
+
+| Field                     | Value                                                                                  |
+|---------------------------|----------------------------------------------------------------------------------------|
+| **Detection Trigger**     | Tuesdays 08:00 UTC, after a successful Stable Release Pipeline run, or manual dispatch |
+| **Detection Workflow**    | `vex-detect.yml` runs OSV-Scanner and files or updates a single triage issue           |
+| **Detection Permissions** | `contents: read`, `issues: write`                                                      |
+| **Drafting Trigger**      | `workflow_run` from VEX Detection, plus manual dispatch                                |
+| **Drafting Workflow**     | `vex-draft.md` invokes the SSSC Reviewer agent and opens one pull request              |
+| **Drafting Permissions**  | `contents: read`, `issues: read`                                                       |
+| **Release Attestation**   | `vex-attest` job in `release-stable.yml`, via the reusable `vex-attest.yml`            |
+| **Attestations**          | Build provenance over the VEX document, plus VEX as predicate over the SBOM subject    |
+| **Human Review Gate**     | AI drafts; a CODEOWNERS-required human reviews and merges the pull request             |
+
+Detection performs no AI drafting. It compares OSV-Scanner findings against the VEX document and reports divergence as a triage issue.
+
+Drafting is gated twice so it consumes no model budget when there is nothing to do. The first gate skips while a VEX draft pull request is already open. The second gate skips when every finding already carries a terminal VEX status. The resulting pull request is restricted to the VEX document and is labeled `security`, `automated`, and `needs-triage`.
+
+The release attestation produces two artifacts: a build-provenance attestation whose subject is the VEX document, and an in-toto attestation that binds the VEX document as an OpenVEX predicate over the dependency SBOM subject. The VEX document is also uploaded to the GitHub Release.
+
+The merge commit author is the accountable author of record, never the agent.
+
 ### Code Quality Controls
 
-| ID   | Control                | Implementation                   | Validates Against |
-|------|------------------------|----------------------------------|-------------------|
-| CQ-1 | CodeQL Analysis        | codeql-analysis.yml              | T-1, E-1          |
-| CQ-2 | Markdown Linting       | lint:md npm script               | T-2, RAI-4        |
-| CQ-3 | Frontmatter Validation | Validate-MarkdownFrontmatter.ps1 | T-2               |
-| CQ-4 | PowerShell Analysis    | Invoke-PSScriptAnalyzer.ps1      | T-1               |
-| CQ-5 | YAML Linting           | Invoke-YamlLint.ps1              | T-1               |
+| ID   | Control                  | Implementation                                          | Validates Against |
+|------|--------------------------|---------------------------------------------------------|-------------------|
+| CQ-1 | CodeQL Analysis          | codeql-analysis.yml                                     | T-1, T-3, E-1     |
+| CQ-2 | Markdown Linting         | lint:md npm script                                      | T-2, RAI-4        |
+| CQ-3 | Frontmatter Validation   | Validate-MarkdownFrontmatter.ps1                        | T-2               |
+| CQ-4 | PowerShell Analysis      | Invoke-PSScriptAnalyzer.ps1                             | T-1               |
+| CQ-5 | YAML Linting             | Invoke-YamlLint.ps1                                     | T-1               |
+| CQ-6 | Workflow Input Isolation | Step-level `env:` mappings for caller-controlled inputs | T-3               |
+
+CQ-6 keeps GitHub expression evaluation out of shell command text. A workflow maps an
+input such as `${{ inputs.version }}` to an environment variable, then reads the shell's
+native variable (`$INPUT_VERSION` or `$env:INPUT_VERSION`) inside the `run:` block.
+Matrix values generated from repository-controlled configuration do not cross the same
+caller-controlled boundary. The extension packaging workflow applies this pattern to
+version, development-patch, and channel inputs. Other reusable workflows still
+interpolate workflow-call inputs directly inside `run:` blocks, so T-3 remains Partially
+Mitigated. CodeQL provides `actions/code-injection` detection for supported patterns;
+the homegrown dangerous-workflow gate currently covers selected event and workflow-output
+expressions rather than enforcing CQ-6 for workflow-call inputs across the fleet.
 
 ### Access Controls
 
@@ -1491,7 +1540,7 @@ G0: HVE Core is acceptably secure for its intended use as an enterprise prompt e
 
 HVE Core achieves acceptable security through:
 
-1. Automated Controls: 20+ security controls execute automatically via CI/CD
+1. Automated Controls: 21+ security controls execute automatically via CI/CD
 2. Defense-in-Depth: Multiple overlapping controls for critical threats
 3. Transparent Risk Acceptance: AI-inherent risks documented with clear boundaries
 4. Inherited Security: Uses GitHub and Copilot platform security
@@ -1593,18 +1642,19 @@ Most skills are markdown knowledge packs with no runtime and are covered by the 
 Skills that ship an executable runtime (network egress, credential handling, subprocess execution, or untrusted document/content parsing) carry their own per-skill STRIDE threat model in a `SECURITY.md` next to their `SKILL.md`.
 Those models follow a shared structure (assets, adversaries, trust buckets with per-bucket STRIDE mitigations, and an Enterprise Readiness Gaps register) and are the authoritative source for each skill's residual risk.
 
-| Skill                               | Runtime surface                                                                                                                              | Primary residual gaps                                                           | Security model                                                                                                              |
-|-------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| jira                                | REST CLI; environment credentials                                                                                                            | No token revocation; best-effort redaction; no cert pinning                     | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/jira/jira/SECURITY.md)                         |
-| gitlab                              | REST CLI; environment credentials; git-remote subprocess                                                                                     | Untrusted CI-trace egress; insecure-transport opt-out; no cert pinning          | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/gitlab/gitlab/SECURITY.md)                     |
-| mural (experimental)                | REST CLI; embedded stdio MCP server; OAuth token store                                                                                       | OAuth audit gaps; keyring backend toggle is code-execution surface              | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/experimental/mural/SECURITY.md)                |
-| tts-voiceover (experimental)        | Azure Speech egress; key/Entra credentials; SSML + PPTX parsing                                                                              | Content egress to Azure region; broad credential chain                          | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/experimental/tts-voiceover/SECURITY.md)        |
-| accessibility                       | Arbitrary-URL scan egress; unpinned `npx @axe-core/cli` subprocess                                                                           | Unpinned scanner package; no egress allow-list (SSRF); headless-browser surface | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/accessibility/accessibility/SECURITY.md)       |
-| powerpoint (experimental)           | Sandboxed `content-extra.py` execution; LibreOffice/MuPDF document parsing                                                                   | Denylist confinement is not OS-level; external-parser CVE exposure              | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/experimental/powerpoint/SECURITY.md)           |
-| video-to-gif (experimental)         | Local CLI (bash + PowerShell); FFmpeg/ffprobe subprocess; untrusted media parsing                                                            | Inherited FFmpeg decoder CVE exposure; bare-filename search resolution          | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/experimental/video-to-gif/SECURITY.md)         |
-| gh-code-scanning                    | GitHub code-scanning read via `gh` CLI subprocess; stdout only                                                                               | Unpinned `gh`/`jq` PATH dependencies; TLS delegated to `gh`                     | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/github/gh-code-scanning/SECURITY.md)           |
-| customer-card-render (experimental) | Local Python CLI; regex parse of untrusted DT markdown; YAML emission                                                                        | Inherited powerpoint build toolchain; confidential DT prose egress              | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/experimental/customer-card-render/SECURITY.md) |
-| vex                                 | Local Python gate (`vex_gate.py`); anchored-regex parse of untrusted detection-issue body; `json.loads` of local OpenVEX doc; exit code only | Gate-suppression by issue-edit access; forced-proceed AI-credit consumption     | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/security/vex/SECURITY.md)                      |
+| Skill                               | Runtime surface                                                                                                                                                                                                                                                                                                   | Primary residual gaps                                                                                                                                                                                                                                                                        | Security model                                                                                                              |
+|-------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| jira                                | REST CLI; environment credentials                                                                                                                                                                                                                                                                                 | No token revocation; best-effort redaction; no cert pinning                                                                                                                                                                                                                                  | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/jira/jira/SECURITY.md)                         |
+| gitlab                              | REST CLI; environment credentials; git-remote subprocess                                                                                                                                                                                                                                                          | Untrusted CI-trace egress; insecure-transport opt-out; no cert pinning                                                                                                                                                                                                                       | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/gitlab/gitlab/SECURITY.md)                     |
+| mural (experimental)                | REST CLI; embedded stdio MCP server; OAuth token store                                                                                                                                                                                                                                                            | OAuth audit gaps; keyring backend toggle is code-execution surface                                                                                                                                                                                                                           | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/experimental/mural/SECURITY.md)                |
+| tts-voiceover (experimental)        | Azure Speech egress; key/Entra credentials; SSML + PPTX parsing                                                                                                                                                                                                                                                   | Content egress to Azure region; broad credential chain                                                                                                                                                                                                                                       | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/experimental/tts-voiceover/SECURITY.md)        |
+| accessibility                       | Arbitrary-URL scan egress; unpinned `npx @axe-core/cli` subprocess                                                                                                                                                                                                                                                | Unpinned scanner package; no egress allow-list (SSRF); headless-browser surface                                                                                                                                                                                                              | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/accessibility/accessibility/SECURITY.md)       |
+| powerpoint (experimental)           | Sandboxed `content-extra.py` execution; LibreOffice/MuPDF document parsing                                                                                                                                                                                                                                        | Denylist confinement is not OS-level; external-parser CVE exposure                                                                                                                                                                                                                           | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/experimental/powerpoint/SECURITY.md)           |
+| video-to-gif (experimental)         | Local CLI (bash + PowerShell); FFmpeg/ffprobe subprocess; untrusted media parsing                                                                                                                                                                                                                                 | Inherited FFmpeg decoder CVE exposure; bare-filename search resolution                                                                                                                                                                                                                       | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/experimental/video-to-gif/SECURITY.md)         |
+| copilot-otel-metrics (experimental) | Diff-approved per-key write into the user's global settings.json; loopback OTLP telemetry ingest into a containerized Grafana/Prometheus/Tempo stack; four stdlib Python reference helpers querying local APIs; generated collector configuration, Bicep, Terraform, and Azure CLI templates the operator deploys | Prompt content present in spans despite the documented capture default; shared fleet-wide ingest credential with no per-user binding or in-place rotation; unauthenticated loopback ingest; the no-execution boundary on Docker and infrastructure commands is advisory rather than enforced | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/experimental/copilot-otel-metrics/SECURITY.md) |
+| gh-code-scanning                    | GitHub code-scanning read via `gh` CLI subprocess; stdout only                                                                                                                                                                                                                                                    | Unpinned `gh`/`jq` PATH dependencies; TLS delegated to `gh`                                                                                                                                                                                                                                  | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/github/gh-code-scanning/SECURITY.md)           |
+| customer-card-render (experimental) | Local Python CLI; regex parse of untrusted DT markdown; YAML emission                                                                                                                                                                                                                                             | Inherited powerpoint build toolchain; confidential DT prose egress                                                                                                                                                                                                                           | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/experimental/customer-card-render/SECURITY.md) |
+| vex                                 | Local Python gate (`vex_gate.py`); anchored-regex parse of untrusted detection-issue body; `json.loads` of local OpenVEX doc; exit code only                                                                                                                                                                      | Gate-suppression by issue-edit access; forced-proceed AI-credit consumption                                                                                                                                                                                                                  | [SECURITY.md](https://github.com/microsoft/hve-core/blob/main/.github/skills/security/vex/SECURITY.md)                      |
 
 Skills whose scripts perform only local validation with no external surface (for example `adr-author` and `vally-tests`) do not require a dedicated model; their risk is bounded by the repository-level controls. When a new skill adds an executable runtime with any of the surfaces above, add a `SECURITY.md` following the shared structure and register it in this table and in the [security documentation index](README.md#skill-security-models).
 
