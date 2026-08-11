@@ -272,6 +272,7 @@ _CRED_BACKEND_ENV_VARS = (
     "MURAL_NONINTERACTIVE",
     "MURAL_ENV_FILE_RELAXED",
     "MURAL_ENV_FILE",
+    "CI",
 )
 
 
@@ -551,6 +552,56 @@ class TestResolveBackend:
 
 
 class TestCredentialPromotion:
+    def test_rolls_back_partial_keyring_writes_and_keeps_file(
+        self,
+        mural_module: Any,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: pathlib.Path,
+    ) -> None:
+        mural_module._state.seen_fallback_warn().clear()
+        _isolate_credential_env(monkeypatch, tmp_path)
+        monkeypatch.setenv("MURAL_CREDENTIAL_BACKEND", "auto")
+        monkeypatch.setenv(
+            "MURAL_KEYRING_BACKEND", "keyrings.alt.file.PlaintextKeyring"
+        )
+        monkeypatch.setenv(
+            "MURAL_KEYRING_SERVICE", _keyring_service_for(tmp_path, "rollback")
+        )
+
+        service = mural_module._service_name_for("default")
+        file_path = mural_module._resolve_credential_file("default", os.environ)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(
+            "MURAL_CLIENT_ID=from-file\nMURAL_CLIENT_SECRET=from-secret\n",
+            encoding="utf-8",
+        )
+        if os.name != "nt":
+            os.chmod(file_path, 0o600)
+
+        original_set = mural_module.KeyringBackend.set
+
+        def _fail_second_set(
+            self: Any, service_name: str, key: str, value: str
+        ) -> None:
+            if key == "MURAL_CLIENT_SECRET":
+                raise mural_module._KeyringUnavailable("simulated second-key failure")
+            original_set(self, service_name, key, value)
+
+        monkeypatch.setattr(mural_module.KeyringBackend, "set", _fail_second_set)
+
+        cli_auth_module = importlib.import_module("mural._cli_auth")
+        cli_auth_module._maybe_promote_file_credentials_to_keyring("default")
+
+        keyring_backend = mural_module.KeyringBackend()
+        assert keyring_backend.get(service, "MURAL_CLIENT_ID") is None
+        assert keyring_backend.get(service, "MURAL_CLIENT_SECRET") is None
+        assert file_path.read_text(encoding="utf-8") == (
+            "MURAL_CLIENT_ID=from-file\nMURAL_CLIENT_SECRET=from-secret\n"
+        )
+        assert isinstance(
+            mural_module.resolve_backend("default"), mural_module.FileBackend
+        )
+
     def test_promotes_file_credentials_to_keyring_and_removes_file(
         self,
         mural_module: Any,

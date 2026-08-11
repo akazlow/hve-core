@@ -218,11 +218,26 @@ def _maybe_promote_file_credentials_to_keyring(profile_name: str) -> None:
     if not payload:
         return
 
+    written_keys: list[str] = []
+
+    def _rollback_written_keys() -> None:
+        for written_key in reversed(written_keys):
+            try:
+                keyring_backend.delete(service, written_key)
+            except _KeyringUnavailable as exc:
+                _emit(
+                    f"failed to roll back keyring credential {written_key!r} "
+                    f"for profile {profile_name!r} ({exc})",
+                    level=logging.WARNING,
+                )
+
     for key, value in payload.items():
         try:
             keyring_backend.set(service, key, value)
+            written_keys.append(key)
             roundtrip = keyring_backend.get(service, key)
         except _KeyringUnavailable as exc:
+            _rollback_written_keys()
             _emit(
                 f"file-to-keyring credential promotion failed for profile "
                 f"{profile_name!r}; keeping file copy at {file_path} "
@@ -231,6 +246,7 @@ def _maybe_promote_file_credentials_to_keyring(profile_name: str) -> None:
             )
             return
         if roundtrip != value:
+            _rollback_written_keys()
             _emit(
                 f"file-to-keyring credential promotion failed verification for "
                 f"profile {profile_name!r}; keeping file copy at {file_path}",
