@@ -433,6 +433,7 @@ class TestResolveBackend:
             if r.levelno == logging.WARNING
             and "keyring backend available but empty for profile 'default'" in r.message
             and "using file backend" in r.message
+            and "eligible for promotion during auth write flows" in r.message
         ]
         assert len(warns) == 1
 
@@ -614,6 +615,71 @@ class TestCredentialPromotion:
             mural_module.resolve_backend("default"), mural_module.FileBackend
         )
 
+    def test_rolls_back_keyring_write_on_readback_mismatch_and_keeps_file(
+        self,
+        mural_module: Any,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: pathlib.Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        mural_module._state.seen_fallback_warn().clear()
+        _isolate_credential_env(monkeypatch, tmp_path)
+        monkeypatch.setenv("MURAL_CREDENTIAL_BACKEND", "auto")
+        monkeypatch.setenv(
+            "MURAL_KEYRING_BACKEND", "keyrings.alt.file.PlaintextKeyring"
+        )
+        monkeypatch.setenv(
+            "MURAL_KEYRING_SERVICE", _keyring_service_for(tmp_path, "mismatch")
+        )
+
+        service = mural_module._service_name_for("default")
+        file_path = mural_module._resolve_credential_file("default", os.environ)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_contents = "MURAL_CLIENT_ID=from-file\nMURAL_CLIENT_SECRET=from-secret\n"
+        file_path.write_text(file_contents, encoding="utf-8")
+        if os.name != "nt":
+            os.chmod(file_path, 0o600)
+
+        original_get = mural_module.KeyringBackend.get
+        original_set = mural_module.KeyringBackend.set
+        write_completed = False
+        mismatch_returned = False
+
+        def _track_set(self: Any, service_name: str, key: str, value: str) -> None:
+            nonlocal write_completed
+            original_set(self, service_name, key, value)
+            write_completed = True
+
+        def _mismatch_once(self: Any, service_name: str, key: str) -> str | None:
+            nonlocal mismatch_returned
+            if write_completed and not mismatch_returned:
+                mismatch_returned = True
+                return "mismatched-value"
+            return original_get(self, service_name, key)
+
+        monkeypatch.setattr(mural_module.KeyringBackend, "set", _track_set)
+        monkeypatch.setattr(mural_module.KeyringBackend, "get", _mismatch_once)
+
+        caplog.set_level(logging.WARNING, logger="mural")
+        cli_auth_module = importlib.import_module("mural._cli_auth")
+        cli_auth_module._maybe_promote_file_credentials_to_keyring("default")
+
+        keyring_backend = mural_module.KeyringBackend()
+        assert keyring_backend.get(service, "MURAL_CLIENT_ID") is None
+        assert keyring_backend.get(service, "MURAL_CLIENT_SECRET") is None
+        assert file_path.read_text(encoding="utf-8") == file_contents
+        assert isinstance(
+            mural_module.resolve_backend("default"), mural_module.FileBackend
+        )
+        warns = [
+            record
+            for record in caplog.records
+            if record.levelno == logging.WARNING
+            and "promotion failed verification" in record.message
+            and "keeping file copy" in record.message
+        ]
+        assert len(warns) == 1
+
     def test_promotes_file_credentials_to_keyring_and_removes_file(
         self,
         mural_module: Any,
@@ -698,6 +764,61 @@ class TestCredentialPromotion:
             if r.levelno == logging.WARNING
             and "file-to-keyring credential promotion failed" in r.message
             and "keeping file copy" in r.message
+        ]
+        assert len(warns) == 1
+
+    def test_keeps_verified_keyring_and_file_when_cleanup_fails(
+        self,
+        mural_module: Any,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: pathlib.Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        mural_module._state.seen_fallback_warn().clear()
+        _isolate_credential_env(monkeypatch, tmp_path)
+        monkeypatch.setenv("MURAL_CREDENTIAL_BACKEND", "auto")
+        monkeypatch.setenv(
+            "MURAL_KEYRING_BACKEND", "keyrings.alt.file.PlaintextKeyring"
+        )
+        monkeypatch.setenv(
+            "MURAL_KEYRING_SERVICE", _keyring_service_for(tmp_path, "cleanup")
+        )
+
+        service = mural_module._service_name_for("default")
+        file_path = mural_module._resolve_credential_file("default", os.environ)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_contents = "MURAL_CLIENT_ID=from-file\nMURAL_CLIENT_SECRET=from-secret\n"
+        file_path.write_text(file_contents, encoding="utf-8")
+        if os.name != "nt":
+            os.chmod(file_path, 0o600)
+
+        original_unlink = os.unlink
+
+        def _fail_credential_unlink(
+            path: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+            *args: Any,
+            **kwargs: Any,
+        ) -> None:
+            if pathlib.Path(path) == file_path:
+                raise PermissionError("simulated cleanup failure")
+            original_unlink(path, *args, **kwargs)
+
+        cli_auth_module = importlib.import_module("mural._cli_auth")
+        monkeypatch.setattr(cli_auth_module.os, "unlink", _fail_credential_unlink)
+
+        caplog.set_level(logging.WARNING, logger="mural")
+        cli_auth_module._maybe_promote_file_credentials_to_keyring("default")
+
+        keyring_backend = mural_module.KeyringBackend()
+        assert keyring_backend.get(service, "MURAL_CLIENT_ID") == "from-file"
+        assert keyring_backend.get(service, "MURAL_CLIENT_SECRET") == "from-secret"
+        assert file_path.read_text(encoding="utf-8") == file_contents
+        warns = [
+            record
+            for record in caplog.records
+            if record.levelno == logging.WARNING
+            and "file cleanup failed" in record.message
+            and "keeping file copy" in record.message
         ]
         assert len(warns) == 1
 

@@ -252,7 +252,8 @@ def resolve_backend(profile: str = "default") -> CredentialBackend:
                         msg = (
                             f"keyring backend available but empty for "
                             f"profile {profile!r}; "
-                            f"using file backend at {file_path}"
+                            f"using file backend at {file_path}; credentials "
+                            "are eligible for promotion during auth write flows"
                         )
                         _emit(msg, level=logging.WARNING)
                     selected = file_backend
